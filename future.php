@@ -14,18 +14,22 @@ class future
 {
 	//TODO: Safeguards and type safety.
 
+	static $substitutes = [];
+
 	static function rnd()
 	{
 		$out = (rand(0,1000000000)/1000000000);
 		return($out);
 	}
 
-	static $substitutes = [];
-
 	function nothing($args)
 	{
 		return $args;
 	}
+
+	/*
+	 * Starts a new function in parallel and returns it as a future.
+	*/
 	function start($f,$args,$serial = 0)
 	{
 		if(!function_exists("pcntl_fork")||$serial == 1) //For browsers...
@@ -69,27 +73,40 @@ class future
 		return $result;
 	}
 
+	/*
+	 * Waits on a future and returns the result of the operation. 
+	*/
 	function wait($info,$serial = 0)
 	{
-		if(!function_exists("pcntl_fork")||$serial == 1) //For browsers...
-			return future::$substitutes[$info];
+		if(isset(future::$substitutes[$info[0]]))
+			return future::$substitutes[$info[0]];
 		$line = future::socket_read_n($info[1],PHP_BINARY_READ);
 		$out = unserialize(base64_decode($line));
 		pcntl_waitpid($info[0], $status);
 		socket_close($info[1]);
+		future::$substitutes[$info[0]] = $out;
 		return $out;
 	}
 
+	/*
+	 * Returns 1 if a future is still running, or 0 if it has completed. 
+	*/
 	function running($info)
 	{
 		return future::check($info);
 	}
 
+	/*
+	 * Returns 1 if a future has completed, or 0 if it is still running. 
+	*/
 	function terminated($info)
 	{
 		return !future::check($info);
 	}
 
+	/*
+	 * Returns the status of a future without disrupting its operation. 
+	*/
 	function check($info) //1 if running, 0 if not
 	{
 		if(!is_array($info)) return 0;
@@ -99,11 +116,20 @@ class future
 		if (in_array(trim($m[2]) /*status*/, array("D","R","S"))) return 1;
 		return 0;
 	}
+
+	/*
+	 * Returns a "ready" future containing a value or completed operation. 
+	*/
 	function ready($data)
 	{
 		return future::start("future::nothing",[$data]);
 	}
 
+	/*
+	 * After all futures have completed, pass them as arguments to the
+	 * lambda function.  Returns the entire operation as a future to prevent
+	 * the disruption of the rest of the process which calls it.
+	*/
 	function after($lambda)
 	{
 		$args = func_get_args();
