@@ -33,7 +33,7 @@ function parallel_dotproduct($vector1,$vector2,$start,$stop,$thresh)
 }
 
 //Length of vectors
-$len = 5000000;
+$len = 4000000;
 
 //Minimum threshold
 $minthresh = $len/16;
