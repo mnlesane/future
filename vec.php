@@ -2,7 +2,9 @@
 include 'future.php';
 function vector($n)
 {
-	return ($n)?array_merge([future::rnd()],vector($n-1)):[];
+	$out = [];
+	for($i = 0; $i < $n; $i++) $out[] = future::rnd();
+	return $out;
 }
 
 function dotproduct($a,$b)
@@ -30,25 +32,38 @@ function parallel_dotproduct($vector1,$vector2,$start,$stop,$thresh)
 	return $out;
 }
 
-$len = 10000;
+//Length of vectors
+$len = 5000000;
 
+//Minimum threshold
+$minthresh = $len/16;
+
+//Initialization of vectors
+echo "Initializing Vector 1...\n";
 $a = vector($len);
+echo "Initializing Vector 2...\n";
 $b = vector($len);
 
-$x = microtime(true);
-$c = dotproduct($a,$b);
-$y = microtime(true);
-$n = $y-$x;
-echo "Serial: $n\n";
+//Serial Test
+{
+	$x = microtime(true);
+	$c = dotproduct($a,$b);
+	$y = microtime(true);
+	$n = $y-$x;
+	echo "Result: $c\n";
+	echo "Serial: $n\n\n";
+}
 
-for($thresh = 1; $thresh <= $len*2; $thresh *= 2)
+//Parallel Tests
+for($thresh = $len*2; $thresh >= ceil($minthresh); $thresh /= 2)
 {
 	$x = microtime(true);
 	$c = parallel_dotproduct($a,$b,0,count($a)-1,$thresh);
 	$y = microtime(true);
 	$m = $y-$x;
+	echo "Result: $c\n";
 	echo "Parallel: $m (t=$thresh)\n";
-	$q = $n/$m;
-	echo "Ratio: $q\n";
+	$q = @$n/$m;
+	echo "Ratio: $q\n\n";
 }
 ?>
